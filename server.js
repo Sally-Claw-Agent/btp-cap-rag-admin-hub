@@ -22,6 +22,9 @@ const LEGACY_PROXY_BASE_URL =
   process.env.AI_CORE_PROXY_BASE_URL ||
   'https://aicore-proxy-btp.cfapps.eu10-004.hana.ondemand.com';
 
+const USE_LEGACY_PROXY =
+  (process.env.AI_USE_LEGACY_PROXY || 'true').toLowerCase() === 'true';
+
 function createCorrelationId() {
   return `corr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -60,52 +63,58 @@ cds.on('bootstrap', (app) => {
    */
   app.use('/v2', async (req, res) => {
     try {
-      // Test-mode proxy: route directly to legacy Cloud Foundry proxy URL
-      // used by the UI5-only chatbot app.
-      const targetUrl = `${LEGACY_PROXY_BASE_URL}${req.originalUrl}`;
+      if (USE_LEGACY_PROXY) {
+        // Test-mode proxy: route directly to legacy Cloud Foundry proxy URL
+        // used by the UI5-only chatbot app.
+        const targetUrl = `${LEGACY_PROXY_BASE_URL}${req.originalUrl}`;
 
-      // Keep destination config for fast switch-back during deploy.
-      // const destinationName =
-      //   process.env.AI_CORE_DESTINATION_NAME || 'AI_CORE_REST_CONN';
+        const resp = await fetch(targetUrl, {
+          method: req.method,
+          headers: {
+            accept: req.headers.accept || 'application/json',
+            'content-type': req.headers['content-type'] || 'application/json',
+            'ai-resource-group': req.headers['ai-resource-group'] || 'default'
+          },
+          body:
+            req.method === 'GET' || req.method === 'HEAD'
+              ? undefined
+              : JSON.stringify(req.body || {})
+        });
 
-      // const resp = await executeHttpRequest(
-      //   {
-      //     destinationName,
-      //     selectionStrategy: DestinationSelectionStrategies.alwaysProvider
-      //   },
-      //   {
-      //     method: req.method,
-      //     url: req.originalUrl,
-      //     headers: {
-      //       accept: req.headers.accept || 'application/json',
-      //       'content-type':
-      //         req.headers['content-type'] || 'application/json'
-      //     },
-      //     data: req.body
-      //   }
-      // );
+        const responseText = await resp.text();
+        res.status(resp.status);
+        const contentType = resp.headers.get('content-type');
+        if (contentType) {
+          res.set('content-type', contentType);
+        }
+        return res.send(responseText);
+      }
 
-      const resp = await fetch(targetUrl, {
-        method: req.method,
-        headers: {
-          accept: req.headers.accept || 'application/json',
-          'content-type': req.headers['content-type'] || 'application/json',
-          'ai-resource-group': req.headers['ai-resource-group'] || 'default'
+      const destinationName =
+        process.env.AI_CORE_DESTINATION_NAME || 'AI_CORE_REST_CONN';
+
+      const resp = await executeHttpRequest(
+        {
+          destinationName,
+          selectionStrategy: DestinationSelectionStrategies.alwaysProvider
         },
-        body:
-          req.method === 'GET' || req.method === 'HEAD'
-            ? undefined
-            : JSON.stringify(req.body || {})
-      });
-
-      const responseText = await resp.text();
+        {
+          method: req.method,
+          url: req.originalUrl,
+          headers: {
+            accept: req.headers.accept || 'application/json',
+            'content-type':
+              req.headers['content-type'] || 'application/json'
+          },
+          data: req.body
+        }
+      );
 
       res.status(resp.status);
-      const contentType = resp.headers.get('content-type');
-      if (contentType) {
-        res.set('content-type', contentType);
+      if (resp.headers?.['content-type']) {
+        res.set('content-type', resp.headers['content-type']);
       }
-      res.send(responseText);
+      return res.send(resp.data);
     } catch (e) {
       const status = e?.response?.status || 500;
       const data = e?.response?.data || { message: String(e?.message || e) };

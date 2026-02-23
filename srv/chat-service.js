@@ -7,6 +7,9 @@ const { DestinationSelectionStrategies } = require('@sap-cloud-sdk/connectivity'
 const LEGACY_PROXY_BASE_URL =
   process.env.AI_CORE_PROXY_BASE_URL ||
   'https://aicore-proxy-btp.cfapps.eu10-004.hana.ondemand.com';
+
+const USE_LEGACY_PROXY =
+  (process.env.AI_USE_LEGACY_PROXY || 'true').toLowerCase() === 'true';
 const {
   buildOrchestrationPayload,
   parseOrchestrationReply,
@@ -47,37 +50,41 @@ module.exports = cds.service.impl(async function (srv) {
       const endpoint = getOrchestrationEndpoint();
       const payload = buildOrchestrationPayload({ message: question.trim(), ragProfileId });
 
-      // Keep destination config for fast switch-back during deploy.
-      // const destinationName = process.env.AI_CORE_DESTINATION_NAME || 'AI_CORE_REST_CONN';
-      // const upstream = await executeHttpRequest(
-      //   { destinationName, selectionStrategy: DestinationSelectionStrategies.alwaysProvider },
-      //   {
-      //     method: 'POST',
-      //     url: endpoint,
-      //     headers: {
-      //       accept: 'application/json',
-      //       'content-type': 'application/json',
-      //       'AI-Resource-Group': process.env.AI_RESOURCE_GROUP || 'default',
-      //       'X-Correlation-ID': correlationId
-      //     },
-      //     data: payload
-      //   }
-      // );
+      let upstreamData;
 
-      const upstream = await fetch(`${LEGACY_PROXY_BASE_URL}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json',
-          'AI-Resource-Group': process.env.AI_RESOURCE_GROUP || 'default',
-          'X-Correlation-ID': correlationId
-        },
-        body: JSON.stringify(payload)
-      });
+      if (USE_LEGACY_PROXY) {
+        const upstream = await fetch(`${LEGACY_PROXY_BASE_URL}${endpoint}`, {
+          method: 'POST',
+          headers: {
+            accept: 'application/json',
+            'content-type': 'application/json',
+            'AI-Resource-Group': process.env.AI_RESOURCE_GROUP || 'default',
+            'X-Correlation-ID': correlationId
+          },
+          body: JSON.stringify(payload)
+        });
 
-      const upstreamData = await upstream.json();
-      if (!upstream.ok) {
-        req.error(upstream.status, upstreamData?.error?.message || 'Upstream proxy call failed.');
+        upstreamData = await upstream.json();
+        if (!upstream.ok) {
+          req.error(upstream.status, upstreamData?.error?.message || 'Upstream proxy call failed.');
+        }
+      } else {
+        const destinationName = process.env.AI_CORE_DESTINATION_NAME || 'AI_CORE_REST_CONN';
+        const upstream = await executeHttpRequest(
+          { destinationName, selectionStrategy: DestinationSelectionStrategies.alwaysProvider },
+          {
+            method: 'POST',
+            url: endpoint,
+            headers: {
+              accept: 'application/json',
+              'content-type': 'application/json',
+              'AI-Resource-Group': process.env.AI_RESOURCE_GROUP || 'default',
+              'X-Correlation-ID': correlationId
+            },
+            data: payload
+          }
+        );
+        upstreamData = upstream.data;
       }
 
       const { reply, parsed } = parseOrchestrationReply(upstreamData);
