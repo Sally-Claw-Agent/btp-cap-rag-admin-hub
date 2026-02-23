@@ -1,5 +1,8 @@
 # Answer Rendering & Citation Contract
 
+> **Contract v1** implemented in Story 2.1 / GitHub Issue #11.
+> See `srv/chat-service.js` (`buildAnswerPayload`, `stripMarkdown`) for the server-side enforcement.
+
 ## Warum das wichtig ist
 
 Unformatierte LLM-Ausgaben führen zu schlechter UX, unklarer Nachvollziehbarkeit und erschweren Support. Daher wird Antwortdarstellung als **Backend/API-Vertrag** definiert — nicht als reine UI-Kosmetik.
@@ -89,6 +92,23 @@ Nicht erlaubt in CAP:
 
 Hinweis SAP/UI5:
 - Bei HTML-Darstellung Sanitizer konsequent aktivieren (SAPUI5 HTML Sanitizer Guidance)
+
+---
+
+## Contract v1 — Server-side Guarantees
+
+Implemented in **Story 2.1 / #11** (`buildAnswerPayload` in `chat-service.js`):
+
+| Field            | Guarantee                                                              |
+|-----------------|------------------------------------------------------------------------|
+| `answer.format`  | Always `'markdown'` or `'plain'`; never null                          |
+| `answer.markdown`| Set to raw reply when `format='markdown'`; **null** when `format='plain'` |
+| `answer.plainText`| Always a non-null string; stripped via `stripMarkdown()` when `format='markdown'`; raw reply when `format='plain'` |
+| `technicalCode`  | Always set: `OK` / `PARTIAL` / `PARTIAL_TRUNCATED` / `LOCAL_FALLBACK`  |
+| `correlationId`  | Always set: echoed from `X-Correlation-ID` header or server-generated   |
+
+**Breaking-change boundary:** Any field added to `AnswerPayload` in v2+ will not remove or rename
+`format`, `markdown`, or `plainText`.
 
 ---
 

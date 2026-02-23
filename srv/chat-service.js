@@ -25,6 +25,80 @@ const UUID_RE =
 const QUESTION_MAX_LENGTH = 2000;
 
 /**
+ * Strip common markdown syntax to produce a plain-text representation.
+ * Used to populate `answer.plainText` when `answer.format = 'markdown'`.
+ *
+ * Covers the most common LLM output patterns: headings, bold/italic, inline
+ * code, fenced code blocks, links, images, lists, blockquotes, and setext
+ * headings.  Not a full CommonMark parser — intentionally minimal.
+ *
+ * @param {string} text - Raw markdown text.
+ * @returns {string} Plain-text approximation, trimmed.
+ */
+function stripMarkdown(text) {
+  return text
+    // Fenced code blocks: drop the fence markers, keep inner content
+    .replace(/```[^\n]*\n([\s\S]*?)```/g, '$1')
+    // Inline code
+    .replace(/`([^`\n]+)`/g, '$1')
+    // ATX headings: ## Heading → Heading
+    .replace(/^#{1,6}\s+/gm, '')
+    // Images: ![alt](url) → alt
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    // Links: [text](url) → text
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    // Bold+italic (3-star/underscore)
+    .replace(/\*{3}([^*]+)\*{3}/g, '$1')
+    .replace(/_{3}([^_]+)_{3}/g, '$1')
+    // Bold (2-star/underscore)
+    .replace(/\*{2}([^*]+)\*{2}/g, '$1')
+    .replace(/_{2}([^_]+)_{2}/g, '$1')
+    // Italic (1-star/underscore)
+    .replace(/\*([^*\n]+)\*/g, '$1')
+    .replace(/_([^_\n]+)_/g, '$1')
+    // Unordered list markers: "- item", "* item", "+ item" → "item"
+    .replace(/^[\t ]*[-*+]\s+/gm, '')
+    // Ordered list markers: "1. item" → "item"
+    .replace(/^[\t ]*\d+\.\s+/gm, '')
+    // Blockquotes: "> text" → "text"
+    .replace(/^>\s*/gm, '')
+    // Horizontal rules
+    .replace(/^[-*_]{3,}\s*$/gm, '')
+    // Setext-style heading underlines (=== or ---)
+    .replace(/^[=\-]{2,}\s*$/gm, '')
+    // Collapse excessive blank lines
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/**
+ * Build the `answer` field of AskQuestionResponse (Contract v1).
+ *
+ * Contract v1 rules (Story 2.1 / #11):
+ *  - format    : 'markdown' | 'plain' — always set, never null
+ *  - markdown  : raw reply string when format='markdown'; null when format='plain'
+ *  - plainText : plain-text string — always set, never null
+ *                (stripped from markdown when format='markdown'; raw reply when 'plain')
+ *
+ * @param {{ reply: string, format: 'markdown'|'plain' }} parseResult
+ * @returns {{ format: string, markdown: string|null, plainText: string }}
+ */
+function buildAnswerPayload({ reply, format }) {
+  if (format === 'markdown') {
+    return {
+      format: 'markdown',
+      markdown: reply,
+      plainText: stripMarkdown(reply)
+    };
+  }
+  return {
+    format: 'plain',
+    markdown: null,
+    plainText: reply
+  };
+}
+
+/**
  * Generate a short, URL-safe correlation ID when none is provided by the caller.
  * Format: corr-<timestamp-base36>-<random-6-chars>
  */
@@ -336,11 +410,7 @@ module.exports = cds.service.impl(async function (srv) {
       return {
         conversationId: conversationId ?? null,
         messageId: null,
-        answer: {
-          format: parseResult.format,
-          markdown: parseResult.reply,
-          plainText: parseResult.reply
-        },
+        answer: buildAnswerPayload(parseResult),
         citations: [],
         model: {
           name: process.env.AI_MODEL_NAME || 'gemini-2.0-flash-lite',

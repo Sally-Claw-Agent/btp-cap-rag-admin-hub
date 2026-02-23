@@ -64,18 +64,21 @@ No other fields are accepted or forwarded.
 | `technicalCode` | String          | `OK` / `PARTIAL` / `LOCAL_FALLBACK`              |
 | `correlationId` | String          | End-to-end trace ID (echo or server-generated)   |
 
-**`AnswerPayload`**
+**`AnswerPayload`** (Contract v1 — Story 2.1 / #11)
 
-| Field       | Type          | Notes                                                         |
-|------------|---------------|---------------------------------------------------------------|
-| `format`    | String        | `markdown` or `plain` — detected from answer content         |
-| `markdown`  | String        | Answer text (same as `plainText`; render as markdown when `format=markdown`) |
-| `plainText` | String        | Answer text (same as `markdown`; always safe for plain display) |
+| Field       | Type           | Notes                                                                           |
+|------------|----------------|---------------------------------------------------------------------------------|
+| `format`    | String         | `markdown` or `plain` — detected server-side; always set                       |
+| `markdown`  | String or null | Raw markdown when `format='markdown'`; **null** when `format='plain'`           |
+| `plainText` | String         | Plain-text representation; always set and non-null.  When `format='markdown'`, common markdown syntax is stripped server-side.  When `format='plain'`, identical to the raw reply. |
 
-> `format` is determined server-side via a heuristic: if the extracted text contains
-> markdown patterns (headings, bold/italic, lists, code fences, links), it is classified
-> `markdown`; otherwise `plain`.  Both `markdown` and `plainText` always contain the same
-> string — `format` instructs the UI how to render it.
+> `format` is determined server-side: if the extracted text contains markdown patterns
+> (headings, bold/italic, lists, code fences, links) it is classified `markdown`;
+> otherwise `plain`.
+>
+> `markdown` and `plainText` differ when `format='markdown'` — `markdown` carries the
+> raw LLM output and `plainText` is a stripped fallback safe for plain rendering.
+> When `format='plain'` both fields carry equivalent content, but `markdown` is null.
 
 ### Example success response
 
@@ -86,8 +89,8 @@ No other fields are accepted or forwarded.
     "messageId": null,
     "answer": {
       "format": "markdown",
-      "markdown": "The onboarding process starts with…",
-      "plainText": "The onboarding process starts with…"
+      "markdown": "## Onboarding\n\n- Step 1: Complete HR intake\n- Step 2: IT setup",
+      "plainText": "Onboarding\n\nStep 1: Complete HR intake\nStep 2: IT setup"
     },
     "citations": [],
     "model": {

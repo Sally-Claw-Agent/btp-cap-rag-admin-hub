@@ -1,6 +1,6 @@
 # Backlog (Epic/Story) — Jira/GitHub-Issue-ready
 
-Status: In Bearbeitung (Stories 1.1, 1.3 abgeschlossen)
+Status: In Bearbeitung (Stories 1.1, 1.3, 2.1 abgeschlossen)
 Scope-Basis: MVP ohne Auth (Phase 1), Security in Phase 2
 
 ---
@@ -53,10 +53,12 @@ Siehe `docs/ASK_QUESTION_API.md` für `technicalCode`-Tabelle und Response-Shape
 ### Story 2.1 — Antwortvertrag v1 implementieren
 **Ziel:** Strukturierte Antwort inkl. Markdown + Plain-Text-Fallback.
 
-**Acceptance Criteria**
-- [ ] Response enthält `answer.format`, `answer.markdown`, `answer.plainText`
-- [ ] `technicalCode` und `correlationId` sind immer gesetzt
-- [ ] Contract ist versioniert und dokumentiert
+**Acceptance Criteria** _(#11, implemented)_
+- [x] Response enthält `answer.format`, `answer.markdown`, `answer.plainText`
+- [x] `technicalCode` und `correlationId` sind immer gesetzt
+- [x] Contract ist versioniert und dokumentiert
+
+Siehe `docs/ANSWER_RENDERING_AND_CITATIONS.md` (Abschnitt „Contract v1") und `docs/ASK_QUESTION_API.md` für AnswerPayload-Tabelle und Beispiel-Response.
 
 ### Story 2.2 — Citation Mapping
 **Ziel:** Quellen aus RAG-Metadaten strukturiert zurückgeben.
