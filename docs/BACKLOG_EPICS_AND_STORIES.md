@@ -1,6 +1,6 @@
 # Backlog (Epic/Story) — Jira/GitHub-Issue-ready
 
-Status: In Bearbeitung (Story 1.1 abgeschlossen)
+Status: In Bearbeitung (Stories 1.1, 1.3 abgeschlossen)
 Scope-Basis: MVP ohne Auth (Phase 1), Security in Phase 2
 
 ---
@@ -39,10 +39,12 @@ Siehe `docs/ASK_QUESTION_API.md` für vollständige Curl-Verifikation und Fehler
 ### Story 1.3 — Robustes Response-Handling
 **Ziel:** Unterschiedliche Response-Shapes vom Provider werden in einheitlichen Contract überführt.
 
-**Acceptance Criteria**
-- [ ] CAP extrahiert Antworttext robust aus bekannten Pfaden
-- [ ] Rückgabe folgt `AskQuestionResponse`-Schema
-- [ ] Fehlerpfade liefern User-safe Message + technischen Code
+**Acceptance Criteria** _(#10, implemented)_
+- [x] CAP extrahiert Antworttext robust aus bekannten Pfaden
+- [x] Rückgabe folgt `AskQuestionResponse`-Schema
+- [x] Fehlerpfade liefern User-safe Message + technischen Code
+
+Siehe `docs/ASK_QUESTION_API.md` für `technicalCode`-Tabelle und Response-Shape-Doku.
 
 ---
 

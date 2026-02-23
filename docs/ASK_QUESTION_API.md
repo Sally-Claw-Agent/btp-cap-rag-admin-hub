@@ -66,11 +66,16 @@ No other fields are accepted or forwarded.
 
 **`AnswerPayload`**
 
-| Field       | Type          | Notes                           |
-|------------|---------------|---------------------------------|
-| `format`    | String        | `markdown` or `plain`           |
-| `markdown`  | String        | Markdown-formatted answer text  |
-| `plainText` | String        | Fallback plain text             |
+| Field       | Type          | Notes                                                         |
+|------------|---------------|---------------------------------------------------------------|
+| `format`    | String        | `markdown` or `plain` — detected from answer content         |
+| `markdown`  | String        | Answer text (same as `plainText`; render as markdown when `format=markdown`) |
+| `plainText` | String        | Answer text (same as `markdown`; always safe for plain display) |
+
+> `format` is determined server-side via a heuristic: if the extracted text contains
+> markdown patterns (headings, bold/italic, lists, code fences, links), it is classified
+> `markdown`; otherwise `plain`.  Both `markdown` and `plainText` always contain the same
+> string — `format` instructs the UI how to render it.
 
 ### Example success response
 
@@ -126,18 +131,21 @@ The `X-Correlation-ID` **response header** carries the correlation ID for every 
 
 ### Upstream/runtime error codes
 
-| `error.code`          | HTTP Status | Condition                                             |
-|----------------------|-------------|-------------------------------------------------------|
-| `UPSTREAM_PROXY_ERROR`| 4xx/5xx     | Legacy proxy returned a non-2xx status                |
-| `UPSTREAM_ERROR`      | 502         | Network-level or unclassified AI Core call failure    |
+| `error.code`              | HTTP Status | Condition                                             |
+|--------------------------|-------------|-------------------------------------------------------|
+| `RAG_PROFILE_NO_REPOSITORY`| 400        | No repositoryId resolved for the given ragProfileId   |
+| `UPSTREAM_PROXY_ERROR`    | 4xx/5xx     | Legacy proxy returned a non-2xx status                |
+| `UPSTREAM_RESPONSE_ERROR` | 502         | AI Core returned HTTP 200 but with an error body      |
+| `UPSTREAM_ERROR`          | 502         | Network-level or unclassified AI Core call failure    |
 
 ### Special `technicalCode` values in successful responses
 
-| `technicalCode`  | Meaning                                                     |
-|-----------------|-------------------------------------------------------------|
-| `OK`             | Answer extracted cleanly from AI Core response              |
-| `PARTIAL`        | AI Core responded but text extraction path was a fallback   |
-| `LOCAL_FALLBACK` | `CHATBOT_FORCE_LOCAL_FALLBACK=true`; no AI Core call made   |
+| `technicalCode`     | Meaning                                                          |
+|--------------------|------------------------------------------------------------------|
+| `OK`                | Answer extracted cleanly from a known AI Core response shape     |
+| `PARTIAL`           | AI Core responded but no known text-extraction path matched      |
+| `PARTIAL_TRUNCATED` | Answer extracted, but model stopped due to max-token limit       |
+| `LOCAL_FALLBACK`    | `CHATBOT_FORCE_LOCAL_FALLBACK=true`; no AI Core call made        |
 
 ---
 

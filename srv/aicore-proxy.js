@@ -191,47 +191,153 @@ function buildOrchestrationPayload({ message, repositoryId, history = [] }) {
 // ── Response parser ──────────────────────────────────────────────────────────
 
 /**
+ * Known response-shape probes for AI Core orchestration, in priority order.
+ * Each entry: [label, extractor]
+ *
+ * Probes cover:
+ *  1. SAP AI Core Orchestration Service — primary choices path
+ *  2. SAP AI Core Orchestration Service — nested LLM module result
+ *  3. SAP AI Core Orchestration Service — simple `response` field
+ *  4. OpenAI-compatible chat completion (direct `choices`)
+ *  5. OpenAI-compatible text completion
+ *  6-10. Simple provider shapes (`output_text`, `result.output_text`,
+ *         `completion`, `reply`, `message`)
+ */
+const RESPONSE_SHAPE_PROBES = [
+  ['orchestration_result.choices[0].message.content',
+    (d) => d?.orchestration_result?.choices?.[0]?.message?.content],
+  ['orchestration_result.module_results.llm.choices[0].message.content',
+    (d) => d?.orchestration_result?.module_results?.llm?.choices?.[0]?.message?.content],
+  ['orchestration_result.response',
+    (d) => d?.orchestration_result?.response],
+  ['choices[0].message.content',
+    (d) => d?.choices?.[0]?.message?.content],
+  ['choices[0].text',
+    (d) => d?.choices?.[0]?.text],
+  ['output_text',
+    (d) => d?.output_text],
+  ['result.output_text',
+    (d) => d?.result?.output_text],
+  ['completion',
+    (d) => d?.completion],
+  ['reply',
+    (d) => d?.reply],
+  ['message',
+    (d) => d?.message]
+];
+
+/**
+ * Extract the finish reason from the primary response shape.
+ * @returns {string|null}
+ */
+function extractFinishReason(data) {
+  return (
+    data?.orchestration_result?.choices?.[0]?.finish_reason ||
+    data?.orchestration_result?.module_results?.llm?.choices?.[0]?.finish_reason ||
+    data?.choices?.[0]?.finish_reason ||
+    null
+  );
+}
+
+/**
+ * Detect whether reply text contains markdown patterns.
+ * @returns {'markdown'|'plain'}
+ */
+function detectAnswerFormat(text) {
+  // Headings, bold/italic, links, unordered/ordered lists, blockquotes, code fences
+  if (/(?:^#{1,6}\s|[*_]{1,2}\S|\[.+\]\(https?:\/\/|^[-*+]\s|^\d+\.\s|^>\s|```)/m.test(text)) {
+    return 'markdown';
+  }
+  return 'plain';
+}
+
+/**
+ * Attempt to extract a text string from a single candidate value.
+ * Handles both plain strings and content arrays (OpenAI-style).
+ * @returns {string|null}
+ */
+function extractTextFromCandidate(candidate) {
+  if (typeof candidate === 'string' && candidate.trim()) {
+    return candidate.trim();
+  }
+  if (Array.isArray(candidate)) {
+    const text = candidate
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        if (typeof item?.text === 'string') return item.text;
+        if (typeof item?.content === 'string') return item.content;
+        return '';
+      })
+      .join('\n')
+      .trim();
+    if (text) return text;
+  }
+  return null;
+}
+
+/**
  * Extract the reply text from an AI Core orchestration response.
- * Probes multiple known response shapes defensively.
+ * Probes multiple known response shapes in priority order.
  *
  * @param {object} data - Raw response body from AI Core.
- * @returns {{ reply: string, parsed: boolean }}
+ * @returns {{
+ *   reply:        string,            - Extracted text; never null
+ *   parsed:       boolean,           - true if a recognised probe succeeded
+ *   format:       'markdown'|'plain',
+ *   finishReason: string|null,       - AI Core finish reason (e.g. 'stop', 'length')
+ *   truncated:    boolean,           - true when finishReason === 'length'
+ *   aiCoreError:  string|null        - set when AI Core returned an error body (HTTP 200 + error)
+ * }}
  */
 function parseOrchestrationReply(data) {
-  if (!data) return { reply: 'No response received from AI Core.', parsed: false };
+  if (!data) {
+    return {
+      reply: 'No response received from AI Core.',
+      parsed: false,
+      format: 'plain',
+      finishReason: null,
+      truncated: false,
+      aiCoreError: null
+    };
+  }
 
-  const candidates = [
-    data?.orchestration_result?.choices?.[0]?.message?.content,
-    data?.orchestration_result?.response,
-    data?.choices?.[0]?.message?.content,
-    data?.choices?.[0]?.text,
-    data?.output_text,
-    data?.completion,
-    data?.reply,
-    data?.message
-  ];
+  // Detect AI Core error-in-body: error field present but no orchestration/choices content.
+  if (data.error && !data.orchestration_result && !data.choices) {
+    const raw = data.error?.message ?? data.error;
+    const aiCoreError = typeof raw === 'string' ? raw : 'AI Core returned an error response.';
+    return {
+      reply: aiCoreError,
+      parsed: false,
+      format: 'plain',
+      finishReason: null,
+      truncated: false,
+      aiCoreError
+    };
+  }
 
-  for (const candidate of candidates) {
-    if (typeof candidate === 'string' && candidate.trim()) {
-      return { reply: candidate.trim(), parsed: true };
-    }
-    if (Array.isArray(candidate)) {
-      const text = candidate
-        .map((item) => {
-          if (typeof item === 'string') return item;
-          if (typeof item?.text === 'string') return item.text;
-          if (typeof item?.content === 'string') return item.content;
-          return '';
-        })
-        .join('\n')
-        .trim();
-      if (text) return { reply: text, parsed: true };
+  const finishReason = extractFinishReason(data);
+
+  for (const [, extract] of RESPONSE_SHAPE_PROBES) {
+    const text = extractTextFromCandidate(extract(data));
+    if (text) {
+      return {
+        reply: text,
+        parsed: true,
+        format: detectAnswerFormat(text),
+        finishReason,
+        truncated: finishReason === 'length',
+        aiCoreError: null
+      };
     }
   }
 
   return {
     reply: 'Could not extract text from AI Core response.',
-    parsed: false
+    parsed: false,
+    format: 'plain',
+    finishReason,
+    truncated: false,
+    aiCoreError: null
   };
 }
 

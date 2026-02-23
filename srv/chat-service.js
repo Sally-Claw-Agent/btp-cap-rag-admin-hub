@@ -313,23 +313,40 @@ module.exports = cds.service.impl(async function (srv) {
         upstreamData = upstream.data;
       }
 
-      const { reply, parsed } = parseOrchestrationReply(upstreamData);
+      const parseResult = parseOrchestrationReply(upstreamData);
       const latencyMs = Date.now() - t0;
+
+      // AI Core returned HTTP 200 but with an error body — reject with user-safe message.
+      if (parseResult.aiCoreError) {
+        rejectWith(
+          req,
+          502,
+          'UPSTREAM_RESPONSE_ERROR',
+          'The AI service returned an error response. Please try again or contact support.',
+          correlationId
+        );
+      }
+
+      const technicalCode = !parseResult.parsed
+        ? 'PARTIAL'
+        : parseResult.truncated
+          ? 'PARTIAL_TRUNCATED'
+          : 'OK';
 
       return {
         conversationId: conversationId ?? null,
         messageId: null,
         answer: {
-          format: 'markdown',
-          markdown: reply,
-          plainText: reply
+          format: parseResult.format,
+          markdown: parseResult.reply,
+          plainText: parseResult.reply
         },
         citations: [],
         model: {
           name: process.env.AI_MODEL_NAME || 'gemini-2.0-flash-lite',
           latencyMs
         },
-        technicalCode: parsed ? 'OK' : 'PARTIAL',
+        technicalCode,
         correlationId
       };
     } catch (err) {
