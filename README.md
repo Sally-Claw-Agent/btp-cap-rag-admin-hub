@@ -35,6 +35,8 @@ Projektplanung für ein CAP-basiertes Backend + UI5-Adminoberfläche zur Verwalt
 - `design/cds/services.cds` – Service-Entwurf (Actions/Entities)
 - `design/api/contract-examples.md` – Request/Response-Beispiele
 - `docs/PRE_DEV_CHECKLIST.md` – Vorbereitungscheckliste vor Implementierungsstart
+- `docs/ANSWER_RENDERING_AND_CITATIONS.md` – Formatierungs-, Rendering- und Quellenkonzept
+- `docs/FEASIBILITY_AND_FUTURE_PROOFING.md` – Machbarkeit, SAP-Fit, Erweiterbarkeit
 
 ## Nächster Schritt
 

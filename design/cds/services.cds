@@ -63,10 +63,33 @@ service RagAdminService {
 type AskQuestionResponse {
   conversationId  : UUID;
   messageId       : UUID;
-  answerText      : String;
-  modelName       : String;
+  answer          : AnswerPayload;
+  citations       : many Citation;
+  model           : ModelInfo;
   technicalCode   : String;
   correlationId   : String;
+}
+
+type AnswerPayload {
+  format          : String; // markdown|plain
+  markdown        : String;
+  plainText       : String;
+}
+
+type Citation {
+  id              : String;
+  title           : String;
+  sourceType      : String; // object-store-document|web|kb
+  documentId      : UUID;
+  chunkId         : String;
+  page            : Integer;
+  uri             : String;
+  score           : Decimal(5,4);
+}
+
+type ModelInfo {
+  name            : String;
+  latencyMs       : Integer;
 }
 
 type UploadDocumentResponse {

@@ -16,6 +16,7 @@
 - Entgegennahme minimaler Fachparameter
 - Aufbau des technischen Orchestration Payloads
 - Aufruf AI Core Proxy
+- **Response-Normalisierung** (Markdown/Plain Fallback, Citation-Mapping)
 - Normierte Antwort + Persistenz
 
 ### RagAdminService (für Admins)
@@ -64,6 +65,8 @@
 - Korrelations-ID pro Request (`x-correlation-id`)
 - Audit-Trail für Admin-Aktionen (Upload/Delete/Reindex)
 - Standardisierte Fehlerobjekte für UI (User-safe Message + technicalCode)
+- Antwortformat als versionierter Vertrag (`answer.format`, `citations[]`)
+- Sichere Darstellung in UI5 (Markdown-Rendering + Sanitizing)
 
 ## 7) Entscheidungsnotizen
 

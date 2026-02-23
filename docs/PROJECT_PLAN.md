@@ -35,7 +35,8 @@ Zusätzlich sendet die bestehende UI5-Chatapp einen umfangreichen technischen Pa
 ### A. Chat (User)
 
 - Frage stellen (`askQuestion`)
-- Antwort inkl. Referenzen/Metadaten erhalten
+- Antwort als strukturierter Vertrag erhalten (`markdown` + `plainText` Fallback)
+- Quellen/Citations aus RAG-Metadaten erhalten
 - Conversation-Verlauf laden
 - User-spezifische Historie speichern
 

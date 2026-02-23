@@ -18,8 +18,27 @@
 {
   "conversationId": "9d10f3ef-e0f4-4d94-9bcb-c3f26dc4bb6b",
   "messageId": "32c57b5f-caf0-4021-8d7f-8f9659272b70",
-  "answerText": "Hier ist der konsolidierte Status...",
-  "modelName": "gpt-4.1-mini",
+  "answer": {
+    "format": "markdown",
+    "markdown": "## Status\n\n- Backend stabil\n- 2 offene Risiken\n\nMehr Details: https://example.org",
+    "plainText": "Status: Backend stabil, 2 offene Risiken, mehr Details: https://example.org"
+  },
+  "citations": [
+    {
+      "id": "cit-1",
+      "title": "projektstatus_feb.pdf",
+      "sourceType": "object-store-document",
+      "documentId": "2b43187b-6b7f-49b7-9074-e9b5ec497a3b",
+      "chunkId": "chunk-0007",
+      "page": 4,
+      "uri": "https://objectstore/...",
+      "score": 0.9123
+    }
+  ],
+  "model": {
+    "name": "gpt-4.1-mini",
+    "latencyMs": 1240
+  },
   "technicalCode": "OK",
   "correlationId": "req-20260223-000123"
 }

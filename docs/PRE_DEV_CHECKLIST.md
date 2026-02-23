@@ -11,6 +11,7 @@ Ziel: Vor Start der Implementierung die wichtigsten Architektur- und Betriebsent
 ## B) API/Domain-Klarheit
 
 - [ ] `askQuestion` strikt minimal halten (`question`, `ragProfileId`, optional `conversationId`)
+- [ ] Strukturierter Antwortvertrag final (`answer.format`, `answer.markdown`, `answer.plainText`, `citations[]`)
 - [ ] Einheitliches Fehlerformat (`message`, `technicalCode`, `correlationId`)
 - [ ] Idempotenz-Regel für Upload/Trigger festlegen (z. B. via Checksumme + Dokumentstatus)
 
