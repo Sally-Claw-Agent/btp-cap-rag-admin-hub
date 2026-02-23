@@ -8,6 +8,13 @@ Zusätzlich sendet die bestehende UI5-Chatapp einen umfangreichen technischen Pa
 
 ## 2) Projektziele
 
+## MVP-Guardrail (wichtig)
+
+- **MVP läuft bewusst ohne Login/Auth/Rollen.**
+- Ziel: Integrations- und Datenflussfehler früh isolieren (Upload, Ingestion, Ask-Flow, Persistenz).
+- Security-Features (IAS/XSUAA, Rollen, Scopes, App Router Policies) werden explizit in **Phase 2** geplant und umgesetzt.
+- Einschränkung: MVP nur in nicht-produktiver, kontrollierter Umgebung verwenden.
+
 ### Primärziele
 
 1. **Admin-Fähigkeit schaffen:** Dokumente für RAG über UI verwalten statt CLI-only.
@@ -67,22 +74,24 @@ Zusätzlich sendet die bestehende UI5-Chatapp einen umfangreichen technischen Pa
 - `design/cds/services.cds`
 - API-Beispiele
 
-## Milestone M2 — Implementierungs-Backlog
+## Milestone M2 — MVP-Umsetzung (ohne Auth)
 
-- Epics/Stories für CAP Backend
-- Epics/Stories für UI5 Admin
-- Testkonzept (Unit/Integration/UAT) als Backlog
+- CAP-Implementierung Kernflows (Ask, Upload, List, Delete, Trigger Ingestion)
+- UI5-Admin-Implementierung Kernflows
+- Stabilitätsfokus: technische Fehlerbehandlung, Retries, Idempotenz
+- Testkonzept für MVP (Unit/Integration/UAT light)
 
-## Milestone M3 — Umsetzung (später)
+## Milestone M3 — Security/Identity (Phase 2)
 
-- CAP-Implementierung
-- UI5-Admin-Implementierung
-- Integration Object Store + AI Core
+- IAS/XSUAA aktivieren
+- Rollen-/Scope-Modell produktionsreif umsetzen
+- App Router + Zugriffspfade härten
+- Autorisierungs- und Penetrationstest-Scope definieren
 
-## Milestone M4 — Härtung & Rollout (später)
+## Milestone M4 — Härtung & Rollout
 
-- Security Hardening
-- Observability
+- Observability (Logs, Korrelation, Metrics)
+- Datenschutz/Retention finalisieren
 - Pilotbetrieb
 
 ## 6) Risiken & Gegenmaßnahmen

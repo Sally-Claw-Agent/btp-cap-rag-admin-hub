@@ -2,6 +2,10 @@ using phoron.rag as db from './schema';
 
 /**
  * Konzept-Entwurf (nicht implementiert)
+ *
+ * Hinweis zur Planung:
+ * - MVP (Phase 1) läuft ohne Login/Auth/Rollen.
+ * - Die unten modellierten @requires-Annotationen gelten als Zielbild für Phase 2 (Security).
  */
 
 service ChatService {

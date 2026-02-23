@@ -3,6 +3,8 @@
 Projektplanung für ein CAP-basiertes Backend + UI5-Adminoberfläche zur Verwaltung von RAG-Trainingsdaten im SAP BTP Object Store und zur Bereitstellung einer schlanken Chat-API für UI5.
 
 > Status: **Planung/Design only** (keine Implementierung gestartet)
+>
+> **MVP-Entscheidung:** Start **ohne Login/Auth/Rollen** (bewusst vereinfacht zur Fehlerminimierung). Security-Härtung mit IAS/XSUAA + Rollen folgt als Phase 2.
 
 ## Zielbild
 
@@ -32,6 +34,7 @@ Projektplanung für ein CAP-basiertes Backend + UI5-Adminoberfläche zur Verwalt
 - `design/cds/schema.cds` – CDS-Entwurf (konzeptionell)
 - `design/cds/services.cds` – Service-Entwurf (Actions/Entities)
 - `design/api/contract-examples.md` – Request/Response-Beispiele
+- `docs/PRE_DEV_CHECKLIST.md` – Vorbereitungscheckliste vor Implementierungsstart
 
 ## Nächster Schritt
 

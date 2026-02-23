@@ -25,13 +25,21 @@
 
 ## 3) Security-Grundsätze
 
-- Kein direkter Object-Store-Key im Browser
-- CAP übernimmt sicherheitskritische Zugriffe serverseitig
-- Rollenbasiertes Modell:
+### 3.1 MVP (Phase 1)
+
+- Bewusst **ohne Login/Auth/Rollen** (nur Dev-/Testbetrieb).
+- Kein direkter Object-Store-Key im Browser.
+- CAP übernimmt sicherheitskritische Zugriffe serverseitig.
+- Zugriffsschutz im MVP primär über Umgebung (separate Subaccount/Space, Netzwerkrestriktion, keine öffentliche Produktivfreigabe).
+
+### 3.2 Zielzustand (Phase 2)
+
+- IAS/XSUAA aktiv mit rollenbasiertem Modell:
   - `ChatUser`
   - `RagAdmin`
   - `SupportReadOnly` (optional)
 - Tenant/User-Isolation über Token-Claims
+- Harter Server-seitiger Authorization-Check pro Action/Entity
 
 ## 4) Datenfluss (vereinfachter Soll-Prozess)
 
@@ -45,7 +53,7 @@
 ## 5) Chatablauf
 
 1. User sendet `question`, `ragProfileId`, optional `conversationId`
-2. CAP prüft Berechtigung und Profil
+2. CAP prüft im MVP nur technische Eingaben/Profil (Autorisierung ab Phase 2)
 3. CAP baut vollständigen AI-Orchestration Payload
 4. CAP ruft AI Core Proxy auf
 5. CAP speichert User-/Assistant-Nachricht im Verlauf
