@@ -411,7 +411,7 @@ module.exports = cds.service.impl(async function (srv) {
         conversationId: conversationId ?? null,
         messageId: null,
         answer: buildAnswerPayload(parseResult),
-        citations: [],
+        citations: parseResult.citations,
         model: {
           name: process.env.AI_MODEL_NAME || 'gemini-2.0-flash-lite',
           latencyMs

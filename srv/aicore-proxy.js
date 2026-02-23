@@ -188,6 +188,133 @@ function buildOrchestrationPayload({ message, repositoryId, history = [] }) {
   };
 }
 
+// ── Citation extractor ───────────────────────────────────────────────────────
+
+/**
+ * Extract and deduplicate citations from the AI Core grounding module result.
+ *
+ * Probes the following chunk-list paths under
+ * `data.orchestration_result.module_results.grounding`, in priority order:
+ *   1. `.grounding_chunks`  – observed in some AI Core Orchestration releases
+ *   2. `.result`            – observed in other releases
+ *   3. `.chunks`            – alternative field name
+ *   4. the grounding value itself (when it is already an array)
+ *
+ * For each chunk the following fields are resolved from both the item root and
+ * its nested `.metadata` object (item root takes precedence):
+ *   documentId  – item.documentId | item.document_id | meta.documentId | meta.document_id
+ *   chunkId     – item.chunkId    | item.chunk_id    | meta.chunkId    | meta.chunk_id
+ *   page        – item.page | meta.page | meta.page_number | meta.pageNumber  (→ integer)
+ *   score       – item.score | meta.score  (→ float)
+ *   uri         – item.url  | item.uri  | meta.url | meta.uri
+ *   title       – item.title | meta.title | meta.file_name | meta.fileName | meta.name
+ *   sourceType  – item.sourceType | item.source_type | meta.sourceType | meta.source_type
+ *                 (default: 'object-store-document')
+ *
+ * Deduplication key priority (first truthy wins):
+ *   1. chunkId
+ *   2. documentId + page  (e.g. "uuid:14")
+ *   3. documentId alone
+ *   4. uri
+ *   5. positional index  (last resort: "__idx_N")
+ *
+ * @param {object} data - Raw response body from AI Core.
+ * @returns {Array<object>} Normalised, deduplicated Citation objects; [] when
+ *   grounding metadata is absent or unrecognised.
+ */
+function extractCitations(data) {
+  if (!data) return [];
+
+  const grounding = data?.orchestration_result?.module_results?.grounding;
+  if (!grounding) return [];
+
+  // Probe known chunk-list locations in priority order.
+  const candidates = [
+    grounding?.grounding_chunks,
+    grounding?.result,
+    grounding?.chunks,
+    Array.isArray(grounding) ? grounding : null
+  ];
+
+  let items = null;
+  for (const c of candidates) {
+    if (Array.isArray(c) && c.length > 0) {
+      items = c;
+      break;
+    }
+  }
+  if (!items) return [];
+
+  const seen = new Set();
+  const citations = [];
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (!item || typeof item !== 'object') continue;
+
+    const meta = (item.metadata && typeof item.metadata === 'object') ? item.metadata : {};
+
+    // ── Field resolution ───────────────────────────────────────────────────
+    const documentId =
+      item.documentId || item.document_id || meta.documentId || meta.document_id || null;
+
+    const chunkId =
+      item.chunkId || item.chunk_id || meta.chunkId || meta.chunk_id || null;
+
+    const rawPage =
+      item.page != null ? item.page
+      : meta.page != null ? meta.page
+      : meta.page_number != null ? meta.page_number
+      : meta.pageNumber != null ? meta.pageNumber
+      : null;
+    const page = rawPage != null && Number.isFinite(parseInt(rawPage, 10))
+      ? parseInt(rawPage, 10)
+      : null;
+
+    const rawScore =
+      item.score != null ? item.score
+      : meta.score != null ? meta.score
+      : null;
+    const score = rawScore != null && Number.isFinite(parseFloat(rawScore))
+      ? parseFloat(rawScore)
+      : null;
+
+    const uri =
+      item.url || item.uri || meta.url || meta.uri || null;
+
+    const title =
+      item.title || meta.title || meta.file_name || meta.fileName || meta.name || null;
+
+    const sourceType =
+      item.sourceType || item.source_type || meta.sourceType || meta.source_type
+      || 'object-store-document';
+
+    // ── Deduplication ──────────────────────────────────────────────────────
+    const dedupKey =
+      chunkId
+      || (documentId && page != null ? `${documentId}:${page}` : null)
+      || documentId
+      || uri
+      || `__idx_${i}`;
+
+    if (seen.has(dedupKey)) continue;
+    seen.add(dedupKey);
+
+    citations.push({
+      id: `cit-${citations.length + 1}`,
+      title: title || null,
+      sourceType,
+      documentId: documentId || null,
+      chunkId: chunkId || null,
+      page: page ?? null,
+      uri: uri || null,
+      score: score ?? null
+    });
+  }
+
+  return citations;
+}
+
 // ── Response parser ──────────────────────────────────────────────────────────
 
 /**
@@ -286,7 +413,8 @@ function extractTextFromCandidate(candidate) {
  *   format:       'markdown'|'plain',
  *   finishReason: string|null,       - AI Core finish reason (e.g. 'stop', 'length')
  *   truncated:    boolean,           - true when finishReason === 'length'
- *   aiCoreError:  string|null        - set when AI Core returned an error body (HTTP 200 + error)
+ *   aiCoreError:  string|null,       - set when AI Core returned an error body (HTTP 200 + error)
+ *   citations:    Array<object>      - Extracted, deduplicated RAG citations ([] when absent)
  * }}
  */
 function parseOrchestrationReply(data) {
@@ -297,7 +425,8 @@ function parseOrchestrationReply(data) {
       format: 'plain',
       finishReason: null,
       truncated: false,
-      aiCoreError: null
+      aiCoreError: null,
+      citations: []
     };
   }
 
@@ -311,11 +440,13 @@ function parseOrchestrationReply(data) {
       format: 'plain',
       finishReason: null,
       truncated: false,
-      aiCoreError
+      aiCoreError,
+      citations: []
     };
   }
 
   const finishReason = extractFinishReason(data);
+  const citations = extractCitations(data);
 
   for (const [, extract] of RESPONSE_SHAPE_PROBES) {
     const text = extractTextFromCandidate(extract(data));
@@ -326,7 +457,8 @@ function parseOrchestrationReply(data) {
         format: detectAnswerFormat(text),
         finishReason,
         truncated: finishReason === 'length',
-        aiCoreError: null
+        aiCoreError: null,
+        citations
       };
     }
   }
@@ -337,12 +469,14 @@ function parseOrchestrationReply(data) {
     format: 'plain',
     finishReason,
     truncated: false,
-    aiCoreError: null
+    aiCoreError: null,
+    citations
   };
 }
 
 module.exports = {
   buildOrchestrationPayload,
   parseOrchestrationReply,
-  getOrchestrationEndpoint
+  getOrchestrationEndpoint,
+  extractCitations
 };

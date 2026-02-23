@@ -95,6 +95,51 @@ Hinweis SAP/UI5:
 
 ---
 
+## Citation Mapping Rules (Story 2.2 / #12)
+
+Implemented in `extractCitations()` in `srv/aicore-proxy.js`, called from `parseOrchestrationReply`.
+
+### Grounding paths probed (priority order)
+
+```
+data.orchestration_result.module_results.grounding.grounding_chunks  ← tried first
+data.orchestration_result.module_results.grounding.result
+data.orchestration_result.module_results.grounding.chunks
+data.orchestration_result.module_results.grounding               ← when already an array
+```
+
+If none of these yield a non-empty array, `citations: []` is returned (graceful degradation — no error).
+
+### Field resolution per chunk
+
+Each chunk is probed at `item.<field>` first, then `item.metadata.<field>`:
+
+| Citation field | Source keys tried (item root, then metadata)                                 |
+|---------------|------------------------------------------------------------------------------|
+| `documentId`  | `documentId`, `document_id`                                                  |
+| `chunkId`     | `chunkId`, `chunk_id`                                                        |
+| `page`        | `page`, `page_number`, `pageNumber`  → parsed as integer                     |
+| `score`       | `score`  → parsed as float                                                   |
+| `uri`         | `url`, `uri`                                                                 |
+| `title`       | `title`, `file_name`, `fileName`, `name`                                     |
+| `sourceType`  | `sourceType`, `source_type`  (default: `'object-store-document'`)           |
+
+Fields not found in the upstream payload are set to `null`; never omitted from the object.
+Auto-assigned `id` field follows `"cit-N"` (1-based, after deduplication).
+
+### Deduplication
+
+Duplicate chunks are dropped before building the output.
+Deduplication key (first truthy wins):
+
+1. `chunkId`
+2. `documentId + ":" + page`  (e.g. `"some-uuid:14"`)
+3. `documentId` alone
+4. `uri`
+5. Positional index `"__idx_N"` (last resort — keeps all unknown-key chunks)
+
+---
+
 ## Contract v1 — Server-side Guarantees
 
 Implemented in **Story 2.1 / #11** (`buildAnswerPayload` in `chat-service.js`):

@@ -63,10 +63,12 @@ Siehe `docs/ANSWER_RENDERING_AND_CITATIONS.md` (Abschnitt „Contract v1") und `
 ### Story 2.2 — Citation Mapping
 **Ziel:** Quellen aus RAG-Metadaten strukturiert zurückgeben.
 
-**Acceptance Criteria**
-- [ ] `citations[]` enthält `documentId`, `chunkId`, `page`, `score`, `uri` (falls verfügbar)
-- [ ] Deduplizierung bei gleichen Quellen
-- [ ] Bei fehlenden Metadaten: `citations=[]` statt Fehler
+**Acceptance Criteria** _(#12, implemented)_
+- [x] `citations[]` enthält `documentId`, `chunkId`, `page`, `score`, `uri` (falls verfügbar)
+- [x] Deduplizierung bei gleichen Quellen
+- [x] Bei fehlenden Metadaten: `citations=[]` statt Fehler
+
+Siehe `docs/ANSWER_RENDERING_AND_CITATIONS.md` (Abschnitt „Citation Mapping Rules") für Feldzuordnung, Dedup-Regeln und Grounding-Pfade.
 
 ### Story 2.3 — UI5 Rendering Guidelines
 **Ziel:** Sichere und konsistente Darstellung in UI5.
