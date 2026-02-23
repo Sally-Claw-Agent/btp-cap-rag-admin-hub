@@ -29,6 +29,7 @@ Zusätzlich sendet die bestehende UI5-Chatapp einen umfangreichen technischen Pa
 - Rollenmatrix inkl. Berechtigungen dokumentiert
 - End-to-End-Prozess für Upload → Ingestion → Status sichtbar beschrieben
 - Datenschutz- und Retention-Ansatz dokumentiert
+- Ist-Payload der UI5-only-App ist dokumentiert und auf den Zielvertrag gemappt (`docs/PAYLOAD_BASELINE_FROM_UI5_ONLY.md`)
 
 ## 3) Funktionskatalog
 

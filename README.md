@@ -37,6 +37,7 @@ Projektplanung für ein CAP-basiertes Backend + UI5-Adminoberfläche zur Verwalt
 - `docs/PRE_DEV_CHECKLIST.md` – Vorbereitungscheckliste vor Implementierungsstart
 - `docs/ANSWER_RENDERING_AND_CITATIONS.md` – Formatierungs-, Rendering- und Quellenkonzept
 - `docs/FEASIBILITY_AND_FUTURE_PROOFING.md` – Machbarkeit, SAP-Fit, Erweiterbarkeit
+- `docs/PAYLOAD_BASELINE_FROM_UI5_ONLY.md` – Ist-Payload aus UI5-only Controller + Mapping zum Zielvertrag
 
 ## Nächster Schritt
 
