@@ -5,11 +5,20 @@ using phoron.rag as db from '../db/schema';
 
 service ChatService {
 
+  /**
+   * Submit a question to the RAG chat backend.
+   *
+   * Required  : question, ragProfileId
+   * Optional  : conversationId (link to an existing conversation; omit to start a new one)
+   *
+   * Errors carry a machine-readable `code` (technicalCode) and the
+   * `X-Correlation-ID` response header for end-to-end tracing.
+   */
   @requires: 'ChatUser'
   action askQuestion(
-    question      : String,
-    ragProfileId  : UUID,
-    conversationId: UUID
+    @mandatory question      : String,   // 1–2000 chars; trimmed server-side
+    @mandatory ragProfileId  : UUID,     // scopes vector store lookup
+              conversationId : UUID      // optional – omit to start a new conversation
   ) returns AskQuestionResponse;
 
   @requires: 'ChatUser'

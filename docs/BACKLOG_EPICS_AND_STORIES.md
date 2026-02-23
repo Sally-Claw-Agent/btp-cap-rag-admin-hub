@@ -1,6 +1,6 @@
 # Backlog (Epic/Story) — Jira/GitHub-Issue-ready
 
-Status: Planung vor Implementierung
+Status: In Bearbeitung (Story 1.1 abgeschlossen)
 Scope-Basis: MVP ohne Auth (Phase 1), Security in Phase 2
 
 ---
@@ -19,11 +19,13 @@ Scope-Basis: MVP ohne Auth (Phase 1), Security in Phase 2
 ### Story 1.1 — `askQuestion` Action (minimaler Input)
 **Ziel:** UI5 sendet nur `question`, `ragProfileId`, optional `conversationId`.
 
-**Acceptance Criteria**
-- [ ] CAP Action `askQuestion` ist verfügbar
-- [ ] Request mit minimalem Input wird akzeptiert
-- [ ] Validierungsfehler liefern standardisiertes Fehlerobjekt (`technicalCode`, `correlationId`)
-- [ ] Kein direkter AI-Core-Payload aus UI notwendig
+**Acceptance Criteria** _(#8, implemented)_
+- [x] CAP Action `askQuestion` ist verfügbar (`POST /odata/v4/chat/askQuestion`)
+- [x] Request mit minimalem Input wird akzeptiert (`question` + `ragProfileId`; `conversationId` optional)
+- [x] Validierungsfehler liefern standardisiertes Fehlerobjekt (`error.code` = technicalCode, `X-Correlation-ID` Header)
+- [x] Kein direkter AI-Core-Payload aus UI notwendig (CAP baut Payload intern via `aicore-proxy.js`)
+
+Siehe `docs/ASK_QUESTION_API.md` für vollständige Curl-Verifikation und Fehlercodes.
 
 ### Story 1.2 — Serverseitiger Payload Builder
 **Ziel:** CAP baut den bisherigen technischen Orchestration-Payload vollständig intern.
