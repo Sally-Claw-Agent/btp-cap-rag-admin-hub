@@ -10,10 +10,10 @@
 
 const DEFAULT_DEPLOYMENT_PATH =
   process.env.AI_CORE_ORCHESTRATION_ENDPOINT ||
-  '/v2/inference/deployments/REPLACE_DEPLOYMENT_ID/completion';
+  '/v2/inference/deployments/d0246f61c3352271/completion';
 
 const DEFAULT_REPOSITORY_ID =
-  process.env.AI_CORE_DEFAULT_REPOSITORY_ID || 'REPLACE_REPOSITORY_ID';
+  process.env.AI_CORE_DEFAULT_REPOSITORY_ID || 'c58a8c87-f12d-4712-a791-2295640dafd8';
 
 const DEFAULT_SYSTEM_PROMPT =
   'You are a helpful RAG assistant. Answer strictly based on the provided context. ' +
@@ -43,14 +43,14 @@ function buildOrchestrationPayload({ message, ragProfileId }) {
           config: {
             filters: [
               {
-                id: `repo-${ragProfileId || 'default'}`,
+                id: `repo-${ragProfileId || 'filter1'}`,
                 search_config: { max_chunk_count: 6 },
                 data_repositories: [repositoryId],
                 data_repository_type: 'vector'
               }
             ],
-            input_params: ['user_question'],
-            output_param: 'grounding_context'
+            input_params: ['grounding_input_variable_1'],
+            output_param: 'grounding_output_variable'
           }
         },
         templating_module_config: {
@@ -66,15 +66,28 @@ function buildOrchestrationPayload({ message, ragProfileId }) {
             },
             {
               role: 'user',
+              content: [{ type: 'text', text: 'Hallo, wer bist du und was kannst du?' }]
+            },
+            {
+              role: 'assistant',
               content: [
                 {
                   type: 'text',
-                  text: 'Question: {{?user_question}}\nContext: {{?grounding_context}}'
+                  text: 'Hallo! 👋 Ich bin ChatBob, der interne Chatbot von Phoron Consulting. Wie kann ich dir helfen?'
+                }
+              ]
+            },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: 'UserQuestion: {{?grounding_input_variable_1}}, Context: {{?grounding_output_variable}}'
                 }
               ]
             }
           ],
-          defaults: { user_question: '' }
+          defaults: { grounding_input_variable_1: '' }
         },
         llm_module_config: {
           model_name: process.env.AI_MODEL_NAME || 'gemini-2.0-flash-lite',
@@ -86,7 +99,7 @@ function buildOrchestrationPayload({ message, ragProfileId }) {
         }
       }
     },
-    input_params: { user_question: message }
+    input_params: { grounding_input_variable_1: message }
   };
 }
 

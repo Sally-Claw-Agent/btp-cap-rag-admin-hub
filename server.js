@@ -18,6 +18,10 @@ const express = require('express');
 const { executeHttpRequest } = require('@sap-cloud-sdk/http-client');
 const { DestinationSelectionStrategies } = require('@sap-cloud-sdk/connectivity');
 
+const LEGACY_PROXY_BASE_URL =
+  process.env.AI_CORE_PROXY_BASE_URL ||
+  'https://aicore-proxy-btp.cfapps.eu10-004.hana.ondemand.com';
+
 function createCorrelationId() {
   return `corr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -56,31 +60,52 @@ cds.on('bootstrap', (app) => {
    */
   app.use('/v2', async (req, res) => {
     try {
-      const destinationName =
-        process.env.AI_CORE_DESTINATION_NAME || 'AI_CORE_REST_CONN';
+      // Test-mode proxy: route directly to legacy Cloud Foundry proxy URL
+      // used by the UI5-only chatbot app.
+      const targetUrl = `${LEGACY_PROXY_BASE_URL}${req.originalUrl}`;
 
-      const resp = await executeHttpRequest(
-        {
-          destinationName,
-          selectionStrategy: DestinationSelectionStrategies.alwaysProvider
+      // Keep destination config for fast switch-back during deploy.
+      // const destinationName =
+      //   process.env.AI_CORE_DESTINATION_NAME || 'AI_CORE_REST_CONN';
+
+      // const resp = await executeHttpRequest(
+      //   {
+      //     destinationName,
+      //     selectionStrategy: DestinationSelectionStrategies.alwaysProvider
+      //   },
+      //   {
+      //     method: req.method,
+      //     url: req.originalUrl,
+      //     headers: {
+      //       accept: req.headers.accept || 'application/json',
+      //       'content-type':
+      //         req.headers['content-type'] || 'application/json'
+      //     },
+      //     data: req.body
+      //   }
+      // );
+
+      const resp = await fetch(targetUrl, {
+        method: req.method,
+        headers: {
+          accept: req.headers.accept || 'application/json',
+          'content-type': req.headers['content-type'] || 'application/json',
+          'ai-resource-group': req.headers['ai-resource-group'] || 'default'
         },
-        {
-          method: req.method,
-          url: req.originalUrl,
-          headers: {
-            accept: req.headers.accept || 'application/json',
-            'content-type':
-              req.headers['content-type'] || 'application/json'
-          },
-          data: req.body
-        }
-      );
+        body:
+          req.method === 'GET' || req.method === 'HEAD'
+            ? undefined
+            : JSON.stringify(req.body || {})
+      });
+
+      const responseText = await resp.text();
 
       res.status(resp.status);
-      if (resp.headers?.['content-type']) {
-        res.set('content-type', resp.headers['content-type']);
+      const contentType = resp.headers.get('content-type');
+      if (contentType) {
+        res.set('content-type', contentType);
       }
-      res.send(resp.data);
+      res.send(responseText);
     } catch (e) {
       const status = e?.response?.status || 500;
       const data = e?.response?.data || { message: String(e?.message || e) };

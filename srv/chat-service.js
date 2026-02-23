@@ -3,6 +3,10 @@
 const cds = require('@sap/cds');
 const { executeHttpRequest } = require('@sap-cloud-sdk/http-client');
 const { DestinationSelectionStrategies } = require('@sap-cloud-sdk/connectivity');
+
+const LEGACY_PROXY_BASE_URL =
+  process.env.AI_CORE_PROXY_BASE_URL ||
+  'https://aicore-proxy-btp.cfapps.eu10-004.hana.ondemand.com';
 const {
   buildOrchestrationPayload,
   parseOrchestrationReply,
@@ -40,26 +44,43 @@ module.exports = cds.service.impl(async function (srv) {
 
     const t0 = Date.now();
     try {
-      const destinationName = process.env.AI_CORE_DESTINATION_NAME || 'AI_CORE_REST_CONN';
       const endpoint = getOrchestrationEndpoint();
       const payload = buildOrchestrationPayload({ message: question.trim(), ragProfileId });
 
-      const upstream = await executeHttpRequest(
-        { destinationName, selectionStrategy: DestinationSelectionStrategies.alwaysProvider },
-        {
-          method: 'POST',
-          url: endpoint,
-          headers: {
-            accept: 'application/json',
-            'content-type': 'application/json',
-            'AI-Resource-Group': process.env.AI_RESOURCE_GROUP || 'default',
-            'X-Correlation-ID': correlationId
-          },
-          data: payload
-        }
-      );
+      // Keep destination config for fast switch-back during deploy.
+      // const destinationName = process.env.AI_CORE_DESTINATION_NAME || 'AI_CORE_REST_CONN';
+      // const upstream = await executeHttpRequest(
+      //   { destinationName, selectionStrategy: DestinationSelectionStrategies.alwaysProvider },
+      //   {
+      //     method: 'POST',
+      //     url: endpoint,
+      //     headers: {
+      //       accept: 'application/json',
+      //       'content-type': 'application/json',
+      //       'AI-Resource-Group': process.env.AI_RESOURCE_GROUP || 'default',
+      //       'X-Correlation-ID': correlationId
+      //     },
+      //     data: payload
+      //   }
+      // );
 
-      const { reply, parsed } = parseOrchestrationReply(upstream.data);
+      const upstream = await fetch(`${LEGACY_PROXY_BASE_URL}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          'AI-Resource-Group': process.env.AI_RESOURCE_GROUP || 'default',
+          'X-Correlation-ID': correlationId
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const upstreamData = await upstream.json();
+      if (!upstream.ok) {
+        req.error(upstream.status, upstreamData?.error?.message || 'Upstream proxy call failed.');
+      }
+
+      const { reply, parsed } = parseOrchestrationReply(upstreamData);
       const latencyMs = Date.now() - t0;
 
       return {
