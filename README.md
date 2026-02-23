@@ -38,6 +38,7 @@ Projektplanung für ein CAP-basiertes Backend + UI5-Adminoberfläche zur Verwalt
 - `docs/ANSWER_RENDERING_AND_CITATIONS.md` – Formatierungs-, Rendering- und Quellenkonzept
 - `docs/FEASIBILITY_AND_FUTURE_PROOFING.md` – Machbarkeit, SAP-Fit, Erweiterbarkeit
 - `docs/PAYLOAD_BASELINE_FROM_UI5_ONLY.md` – Ist-Payload aus UI5-only Controller + Mapping zum Zielvertrag
+- `docs/BACKLOG_EPICS_AND_STORIES.md` – Epic/Story-Backlog (Jira/GitHub-Issue-ready)
 
 ## Nächster Schritt
 
