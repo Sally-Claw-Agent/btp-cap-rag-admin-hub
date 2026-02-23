@@ -9,6 +9,8 @@ const {
   getOrchestrationEndpoint
 } = require('./aicore-proxy');
 
+const LOG = cds.log('chat-service');
+
 const LEGACY_PROXY_BASE_URL =
   process.env.AI_CORE_PROXY_BASE_URL ||
   'https://aicore-proxy-btp.cfapps.eu10-004.hana.ondemand.com';
@@ -50,6 +52,91 @@ function rejectWith(req, status, technicalCode, message, correlationId) {
   throw err;
 }
 
+/**
+ * Resolve the vector repository ID for a given RAG profile.
+ *
+ * Resolution order:
+ *  1. DB lookup: RagProfiles.repositoryId where ID = ragProfileId AND isActive = true
+ *  2. Env var:   AI_CORE_VECTOR_REPOSITORY_ID
+ *  3. null       (caller decides whether to reject)
+ *
+ * A failed DB lookup is non-fatal – the caller receives null from the env
+ * fallback path and can choose to continue or reject the request.
+ *
+ * @param {string} ragProfileId  - UUID of the RAG profile.
+ * @param {string} correlationId - For log correlation only.
+ * @returns {Promise<string|null>} Resolved repository ID, or null if not found.
+ */
+async function resolveRepositoryId(ragProfileId, correlationId) {
+  try {
+    const profile = await SELECT.one
+      .from('phoron.rag.RagProfiles')
+      .where({ ID: ragProfileId, isActive: true })
+      .columns('repositoryId');
+
+    if (profile?.repositoryId) {
+      return profile.repositoryId;
+    }
+
+    // Profile not found or has no repositoryId configured
+    LOG.warn('RAG profile not found or missing repositoryId; falling back to env', {
+      ragProfileId,
+      correlationId
+    });
+  } catch (dbErr) {
+    // Non-fatal – DB may be uninitialized in early dev environments
+    LOG.warn('DB lookup for RAG profile failed; falling back to env', {
+      ragProfileId,
+      correlationId,
+      error: dbErr.message
+    });
+  }
+
+  return process.env.AI_CORE_VECTOR_REPOSITORY_ID || null;
+}
+
+/**
+ * Load conversation history for the given conversation, limited to the most
+ * recent AI_HISTORY_MAX_TURNS turn pairs.
+ *
+ * Returns an empty array when:
+ *  - AI_HISTORY_MAX_TURNS is 0 (default, history disabled)
+ *  - conversationId is not provided
+ *  - DB lookup fails (non-fatal; logged as warning)
+ *
+ * @param {string|null} conversationId - UUID of the conversation to load.
+ * @param {string}      correlationId  - For log correlation only.
+ * @returns {Promise<Array<{role:string, content:string}>>}
+ */
+async function loadConversationHistory(conversationId, correlationId) {
+  const historyMaxTurns = parseInt(process.env.AI_HISTORY_MAX_TURNS || '0', 10);
+
+  if (!conversationId || historyMaxTurns <= 0) return [];
+
+  try {
+    // Load messages in chronological order; the payload builder will apply
+    // the maxTurns window from the tail of the array.
+    const msgs = await SELECT
+      .from('phoron.rag.Messages')
+      .where({
+        conversation_ID: conversationId,
+        role: { in: ['user', 'assistant'] }
+      })
+      .columns('role', 'content')
+      .orderBy('createdAt asc');
+
+    return msgs || [];
+  } catch (dbErr) {
+    // Non-fatal – message persistence may not yet be active (Story 4.2)
+    LOG.warn('History loading failed; proceeding without history', {
+      conversationId,
+      correlationId,
+      error: dbErr.message
+    });
+    return [];
+  }
+}
+
 module.exports = cds.service.impl(async function (srv) {
   /**
    * POST /odata/v4/chat/askQuestion
@@ -58,6 +145,15 @@ module.exports = cds.service.impl(async function (srv) {
    *   question       String  – Required, 1–2000 chars, trimmed before use
    *   ragProfileId   UUID    – Required, used to scope the vector store lookup
    *   conversationId UUID    – Optional, links the exchange to an existing conversation
+   *
+   * Server-side resolution flow (before calling AI Core):
+   *   1. Validate inputs strictly.
+   *   2. ragProfileId → repositoryId  via DB lookup (RagProfiles.repositoryId),
+   *      falling back to AI_CORE_VECTOR_REPOSITORY_ID env var.
+   *   3. Conversation history loaded from DB if AI_HISTORY_MAX_TURNS > 0
+   *      and conversationId is present.
+   *   4. buildOrchestrationPayload assembles the full AI Core payload from
+   *      resolved inputs – the UI never sends orchestration details.
    *
    * Returns AskQuestionResponse (see chat-service.cds).
    * All error responses carry:
@@ -138,13 +234,32 @@ module.exports = cds.service.impl(async function (srv) {
       };
     }
 
+    // ── Server-side resolution ───────────────────────────────────────────────
+
+    // 1. Resolve vector repository ID from DB profile, then env, then reject.
+    const repositoryId = await resolveRepositoryId(ragProfileId, correlationId);
+    if (!repositoryId) {
+      rejectWith(
+        req, 400,
+        'RAG_PROFILE_NO_REPOSITORY',
+        `No vector repository ID could be resolved for profile '${ragProfileId}'. ` +
+          'Ensure the profile exists in RagProfiles with a repositoryId, ' +
+          'or set AI_CORE_VECTOR_REPOSITORY_ID.',
+        correlationId
+      );
+    }
+
+    // 2. Load conversation history (no-op when AI_HISTORY_MAX_TURNS=0 or no conversationId).
+    const history = await loadConversationHistory(conversationId, correlationId);
+
     // ── AI Core / proxy call ─────────────────────────────────────────────────
     const t0 = Date.now();
     try {
       const endpoint = getOrchestrationEndpoint();
       const payload = buildOrchestrationPayload({
         message: question.trim(),
-        ragProfileId
+        repositoryId,
+        history
       });
 
       let upstreamData;
