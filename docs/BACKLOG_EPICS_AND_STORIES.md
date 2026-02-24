@@ -86,11 +86,13 @@ Siehe `docs/ANSWER_RENDERING_AND_CITATIONS.md` (Abschnitt „Citation Mapping Ru
 ### Story 3.1 — Dokument-Upload API
 **Ziel:** Upload statt CLI über CAP möglich machen.
 
-**Acceptance Criteria**
-- [ ] Upload Action vorhanden
-- [ ] MIME/Größe/Dateiname validiert
-- [ ] Objekt wird im Object Store gespeichert
-- [ ] Metadaten in `Documents` persistiert
+**Acceptance Criteria** _(#13, implemented)_
+- [x] Upload Action vorhanden (`POST /odata/v4/rag-admin/uploadDocument`)
+- [x] MIME/Größe/Dateiname validiert (MIME allowlist, 50 MB limit, path-separator guard)
+- [ ] Objekt wird im Object Store gespeichert (Phase 2: `technicalCode: OBJECT_STORE_PENDING` placeholder)
+- [x] Metadaten in `Documents` persistiert (+ AuditLog entry)
+
+Siehe `docs/UPLOAD_DOCUMENT_API.md` für vollständige Request/Response-Doku, Fehlercodes und Curl-Verifikation.
 
 ### Story 3.2 — Dokumentliste & Lifecycle
 **Ziel:** Dokumente anzeigen, filtern, löschen/archivieren.

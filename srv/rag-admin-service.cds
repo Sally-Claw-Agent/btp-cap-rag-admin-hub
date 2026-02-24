@@ -44,6 +44,7 @@ type UploadDocumentResponse {
   objectStoreKey  : String;
   status          : String;
   technicalCode   : String;
+  correlationId   : String;
 }
 
 type JobResponse {
