@@ -29,5 +29,9 @@
       }
     }
   },
-  "private": true
+  "private": true,
+  "env": {
+    "AI_USE_LEGACY_PROXY": "false",
+    "AI_CORE_DESTINATION_NAME": "AI_CORE_REST_CONN"
+  }
 }
