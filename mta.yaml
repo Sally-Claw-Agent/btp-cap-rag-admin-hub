@@ -9,7 +9,7 @@ modules:
     path: gen/srv
     build-parameters:
       builder: npm-ci
-      ignore: ["default-env.json", ".cdsrc.json", ".mta.yaml", "srv", "db", "test", "tests", "coverage"]
+      ignore: ["default-env.json", ".cdsrc.json", ".mta.yaml", "test", "tests", "coverage"]
     provides:
       - name: btp-cap-rag-admin-hub-api
         properties:
