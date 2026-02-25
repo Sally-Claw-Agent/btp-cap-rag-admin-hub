@@ -1,0 +1,25 @@
+---
+ID: btp-cap-rag-admin-hub
+_schema-version: '3.3.0'
+version: 0.1.0
+
+modules:
+  - name: btp-cap-rag-admin-hub-backend
+    type: nodejs
+    path: gen/srv
+    build-parameters:
+      builder: npm-ci
+      ignore: ["default-env.json", ".cdsrc.json", ".mta.yaml", "srv", "db", "test", "tests", "coverage"]
+    provides:
+      - name: btp-cap-rag-admin-hub-api
+        properties:
+          url: ${default-url}
+    requires:
+      - name: btp-cap-rag-admin-hub-destination
+
+resources:
+  - name: btp-cap-rag-admin-hub-destination
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: destination
+      service-plan: lite

@@ -17,8 +17,8 @@
     "start": "cds-serve",
     "start:run": "cds run",
     "watch": "cds watch",
-    "lint": "cds compile srv db >/dev/null",
-    "build": "rimraf resources mta_archives && mbt build --mtar archive",
+    "lint": "npx cds compile srv db >/dev/null",
+    "build": "npx cds build && npx mbt build --mtar archive",
     "deploy": "cf deploy mta_archives/archive.mtar --retries 1"
   },
   "cds": {
