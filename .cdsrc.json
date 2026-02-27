@@ -3,7 +3,7 @@
     "db": {
       "kind": "sqlite",
       "credentials": {
-        "database": "rag-admin.db"
+        "url": "rag-admin.db"
       }
     }
   }

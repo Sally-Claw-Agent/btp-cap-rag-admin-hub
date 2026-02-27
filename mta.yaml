@@ -3,23 +3,89 @@ ID: btp-cap-rag-admin-hub
 _schema-version: '3.3.0'
 version: 0.1.0
 
+# ---------------------------------------------------------------------------
+# Build: run once before all modules.
+# cds build --production generates:
+#   gen/srv/  – compiled CAP service artefacts (app server)
+#   gen/pg/   – PostgreSQL deployer artefacts (one-shot CF task)
+# ---------------------------------------------------------------------------
+build-parameters:
+  before-all:
+    - builder: custom
+      commands:
+        - npm install
+        - npx -p @sap/cds-dk cds build --production
+
+# ---------------------------------------------------------------------------
+# Modules
+# ---------------------------------------------------------------------------
 modules:
+
+  # --- CAP App Server -------------------------------------------------------
   - name: btp-cap-rag-admin-hub-backend
     type: nodejs
     path: gen/srv
+    parameters:
+      buildpack: nodejs_buildpack
+      memory: 512M
+      disk-quota: 1G
     build-parameters:
       builder: npm-ci
-      ignore: ["default-env.json", ".cdsrc.json", ".mta.yaml", "test", "tests", "coverage"]
+      ignore:
+        - default-env.json
+        - .cdsrc.json
+        - .mta.yaml
+        - test
+        - tests
+        - coverage
     provides:
       - name: btp-cap-rag-admin-hub-api
         properties:
           url: ${default-url}
     requires:
       - name: btp-cap-rag-admin-hub-destination
+      - name: btp-cap-rag-admin-hub-postgresql
 
+  # --- PostgreSQL Schema Deployer (one-shot CF task) -----------------------
+  - name: btp-cap-rag-admin-hub-pg-deployer
+    type: nodejs
+    path: gen/pg
+    parameters:
+      buildpack: nodejs_buildpack
+      no-route: true
+      no-start: true
+      tasks:
+        - name: deploy-to-postgresql
+          command: npm start
+          memory: 256M
+    build-parameters:
+      builder: npm-ci
+      ignore:
+        - default-env.json
+    requires:
+      - name: btp-cap-rag-admin-hub-postgresql
+
+# ---------------------------------------------------------------------------
+# Resources
+# ---------------------------------------------------------------------------
 resources:
+
+  # --- Destination Service --------------------------------------------------
   - name: btp-cap-rag-admin-hub-destination
     type: org.cloudfoundry.managed-service
     parameters:
       service: destination
       service-plan: lite
+
+  # --- PostgreSQL Service ---------------------------------------------------
+  # service-plan options:
+  #   trial       – BTP Trial accounts
+  #   free        – BTP PAYG/CPEA (no-cost tier, limited resources)
+  #   development – paid PAYG/CPEA (small dedicated instance)
+  #   standard    – production-grade
+  # Change the plan to match your BTP account type.
+  - name: btp-cap-rag-admin-hub-postgresql
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: postgresql-db
+      service-plan: trial

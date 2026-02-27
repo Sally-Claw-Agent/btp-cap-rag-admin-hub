@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "CAP backend proxy for SAP AI Core RAG services – admin and chat capabilities.",
   "dependencies": {
+    "@cap-js/postgres": "^2",
     "@cap-js/sqlite": "^2",
     "@sap-cloud-sdk/connectivity": "^4.4.0",
     "@sap-cloud-sdk/http-client": "^4.4.0",
@@ -18,14 +19,22 @@
     "start:run": "cds run",
     "watch": "cds watch",
     "lint": "npx cds compile srv db >/dev/null",
-    "build": "npx cds build && npx mbt build --mtar archive",
+    "build": "npm install && npx cds build --production && npx mbt build --mtar archive",
     "deploy": "cf deploy mta_archives/archive.mtar --retries 1"
   },
   "cds": {
     "requires": {
       "auth": "dummy",
       "db": {
-        "kind": "sqlite"
+        "[development]": {
+          "kind": "sqlite",
+          "credentials": {
+            "url": "rag-admin.db"
+          }
+        },
+        "[production]": {
+          "kind": "postgres"
+        }
       }
     }
   },
@@ -33,5 +42,8 @@
   "env": {
     "AI_USE_LEGACY_PROXY": "false",
     "AI_CORE_DESTINATION_NAME": "AI_CORE_REST_CONN"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

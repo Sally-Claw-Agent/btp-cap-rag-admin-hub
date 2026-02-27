@@ -1,0 +1,16 @@
+{
+  "name": "btp-cap-rag-admin-hub-pg-deployer",
+  "version": "0.1.0",
+  "description": "PostgreSQL schema deployer for btp-cap-rag-admin-hub (CF task, not a long-running app).",
+  "dependencies": {
+    "@sap/cds": "^9",
+    "@cap-js/postgres": "^2"
+  },
+  "scripts": {
+    "start": "cds-deploy"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "private": true
+}
