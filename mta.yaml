@@ -59,7 +59,9 @@ modules:
           command: npm start
           memory: 256M
     build-parameters:
-      builder: npm-ci
+      builder: custom
+      commands:
+        - npm install --omit=dev
       ignore:
         - default-env.json
     requires:
